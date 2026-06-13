@@ -1,6 +1,6 @@
 # Micro Filemanager Plugin
 
-A stripped down version of [Nicolai Soeborg's](https://github.com/NicolaiSoeborg) [Filemanager Plugin](https://github.com/micro-editor/updated-plugins/tree/master/filemanager-plugin) for the Micro editor.
+A stripped down version of [Nicolai Soeborg's](https://github.com/NicolaiSoeborg) [Filemanager Plugin](https://github.com/micro-editor/updated-plugins/tree/master/filemanager-plugin) for the [Micro editor](https://github.com/micro-editor/MICRO).
 
 ### Commands
 
