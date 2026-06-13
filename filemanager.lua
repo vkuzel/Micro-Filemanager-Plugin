@@ -471,6 +471,27 @@ local function go_back_dir()
 	end
 end
 
+local function open_path(path)
+	-- Close all panes except for the tree view
+	local tab = tree_view:Tab()
+	local i = 1
+	while #tab.Panes > 1 do
+		pane = tab.Panes[i]
+		if pane ~= tree_view then
+			pane:Quit()
+			i = 1
+		else
+			i = i + 1
+		end
+	end
+
+	-- Replace tree view with the file
+	local new_buf = buffer.NewBufferFromFile(path)
+	tree_view:OpenBuffer(new_buf)
+	tree_view = nil
+	clear_messenger()
+end
+
 -- Tries to open the current index
 -- If it's the top dir indicator, or separator, nothing happens
 -- If it's ".." then it tries to go back a dir
@@ -489,26 +510,9 @@ local function try_open_at_y(y)
 			update_current_dir(scanlist[y].abspath)
 		else
 			-- If it's a file, then open it
-			micro.InfoBar():Message("Filemanager opened ", scanlist[y].abspath)
-
-			-- Close all panes except for the tree view
-			local tab = tree_view:Tab()
-			local i = 1
-			while #tab.Panes > 1 do
-				pane = tab.Panes[i]
-				if pane ~= tree_view then
-					pane:Quit()
-					i = 1
-				else
-					i = i + 1
-				end
-			end
-
-			-- Replace tree view with the file
-			local new_buf = buffer.NewBufferFromFile(scanlist[y].abspath)
-			tree_view:OpenBuffer(new_buf)
-			tree_view = nil
-			clear_messenger()
+			file_path = scanlist[y].abspath
+			open_path(file_path)
+			micro.InfoBar():Message("Filemanager opened ", file_path)
 		end
 	else
 		micro.InfoBar():Error("Can't open that")
@@ -725,76 +729,11 @@ local function new_path(bp, args)
 	-- If the file we tried to make doesn't exist, fail
 	if path_exists(filedir_path) then
 		micro.InfoBar():Message("Filemanager created: ", filedir_path)
+		open_path(filedir_path)
 	else
 		micro.InfoBar():Error("Filemanager creation failed: ", filedir_path)
 		return
 	end
-
-	-- Creates a sort of default object, to be modified below
-	-- If creating a dir, use a "+"
-	local new_filedir = new_listobj(filedir_path, (make_dir and "+" or ""), 0, 0)
-
-	-- Refresh with our new value(s)
-	local last_y
-
-	-- Only insert to scanlist if not created into a compressed dir, since it'd be hidden if it was
-	-- Wrap the below checks so a y=0 doesn't break something
-	if not scanlist_empty and y ~= 0 then
-		-- +1 so it's highlighting the new file/dir
-		last_y = tree_view.Cursor.Loc.Y + 1
-
-		-- Only actually add the object to the list if it's not created on an uncompressed folder
-		if scanlist[y].dirmsg == "+" then
-			-- Exit early, since it was created into an uncompressed folder
-
-			return
-		elseif scanlist[y].dirmsg == "-" then
-			-- Check if created on top of an uncompressed folder
-			-- Change ownership to the folder it was created on top of..
-			-- otherwise, the ownership would be incorrect
-			new_filedir.owner = y
-			-- We insert under the folder, so increment the indent
-			new_filedir.indent = scanlist[y].indent + 1
-		else
-			-- This triggers if the cursor is on top of a file...
-			-- so we copy the properties of it
-			new_filedir.owner = scanlist[y].owner
-			new_filedir.indent = scanlist[y].indent
-		end
-
-		-- A temporary table for adding our new object, and manipulation
-		local new_table = {}
-		-- Insert the new file/dir, and update ownership of everything below it
-		for i = 1, #scanlist do
-			-- Don't use i as index, as it will be off by one on the next pass after below "i == y"
-			new_table[#new_table + 1] = scanlist[i]
-			if i == y then
-				-- Insert our new file/dir (below the last item)
-				new_table[#new_table + 1] = new_filedir
-				-- Increase ownership of everything below it, since we're inserting
-				-- Basically "moving down" everything below y, so ownership needs to increase on everything
-				for inner_i = y + 1, #scanlist do
-					-- When root not pushed by inserting, don't change its ownership
-					-- This also has a dual-purpose to make it not effect root file/dirs
-					-- since y is always >= 3
-					if scanlist[inner_i].owner > y then
-						-- Increase each indicies ownership by 1 since we're only inserting 1 file/dir
-						scanlist[inner_i]:increase_owner(1)
-					end
-				end
-			end
-		end
-		-- Update the scanlist with the new object & updated ownerships
-		scanlist = new_table
-	else
-		-- The scanlist is empty (or cursor is on ".."), so we add on our new file/dir at the bottom
-		scanlist[#scanlist + 1] = new_filedir
-		-- Add current position so it takes into account where we are
-		last_y = #scanlist + tree_view.Cursor.Loc.Y
-	end
-
-	refresh_view()
-	select_line(last_y)
 end
 
 -- open_tree setup's the view
