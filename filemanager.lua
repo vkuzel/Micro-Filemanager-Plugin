@@ -645,22 +645,21 @@ function rename_at_cursor(bp, args)
 end
 
 -- Prompts the user for the file/dir name, then creates the file/dir using Go's os package
-local function create_filedir(filedir_name, make_dir)
+local function new_path(bp, args)
 	if micro.CurPane() ~= tree_view then
 		micro.InfoBar():Message("You can't create a file/dir if your cursor isn't in the tree!")
 		return
 	end
 
-	-- Safety check they passed a name
-	if filedir_name == nil then
-		micro.InfoBar():Error('You need to input a name when using "touch" or "mkdir"!')
+	if #args ~= 1 then
+		micro.InfoBar():Error('When using "create" you need to input a <path> as single argument')
 		return
 	end
 
+	local filedir_name = args[1]
+
 	-- The target they're trying to create on top of/in/at/whatever
 	local y = get_safe_y()
-	-- Holds the path passed to Go for the eventual new file/dir
-	local filedir_path
 	-- A true/false if scanlist is empty
 	local scanlist_empty = scanlist_is_empty()
 
@@ -795,36 +794,6 @@ local function create_filedir(filedir_name, make_dir)
 
 	refresh_view()
 	select_line(last_y)
-end
-
--- Triggered with "touch filename"
-function new_file(bp, args)
-
-	-- Safety check they actually passed a name
-	if #args < 1 then
-		micro.InfoBar():Error('When using "touch" you need to input a file name')
-		return
-	end
-
-	local file_name = args[1]
-
-	-- False because not a dir
-	create_filedir(file_name, false)
-end
-
--- Triggered with "mkdir dirname"
-function new_dir(bp, args)
-
-	-- Safety check they actually passed a name
-	if #args < 1 then
-		micro.InfoBar():Error('When using "mkdir" you need to input a dir name')
-		return
-	end
-
-	local dir_name = args[1]
-
-	-- True because dir
-	create_filedir(dir_name, true)
 end
 
 -- open_tree setup's the view
@@ -1356,10 +1325,8 @@ function init()
     config.MakeCommand("tree", toggle_tree, config.NoComplete)
     -- Rename the file/dir under the cursor
     config.MakeCommand("rename", rename_at_cursor, config.NoComplete)
-    -- Create a new file
-    config.MakeCommand("touch", new_file, config.NoComplete)
-    -- Create a new dir
-    config.MakeCommand("mkdir", new_dir, config.NoComplete)
+    -- Create a new path (dirs and files)
+    config.MakeCommand("create", new_path, config.NoComplete)
     -- Delete a file/dir, and anything contained in it if it's a dir
     config.MakeCommand("rm", prompt_delete_at_cursor, config.NoComplete)
     -- Adds colors to the ".." and any dir's in the tree view via syntax highlighting
