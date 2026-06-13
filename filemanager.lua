@@ -53,10 +53,8 @@ end
 
 -- A check for if a path is a dir
 local function is_dir(path)
-	-- Used for checking if dir
-	local golib_os = import("os")
 	-- Returns a FileInfo on the current file/path
-	local file_info, stat_error = golib_os.Stat(path)
+	local file_info, stat_error = os.Stat(path)
 	-- Wrap in nil check for file/dirs without read permissions
 	if file_info ~= nil then
 		-- Returns true/false if it's a dir
@@ -541,14 +539,13 @@ end
 -- TODO Inline
 -- Stat a path to check if it exists, returning true/false
 local function path_exists(path)
-	local go_os = import("os")
 	-- Stat the file/dir path we created
 	-- file_stat should be non-nil, and stat_err should be nil on success
-	local file_stat, stat_err = go_os.Stat(path)
+	local file_stat, stat_err = os.Stat(path)
 	-- Check if what we tried to create exists
 	if stat_err ~= nil then
 		-- true/false if the file/dir exists
-		return go_os.IsExist(stat_err)
+		return os.IsExist(stat_err)
 	elseif file_stat ~= nil then
 		-- Assume it exists if no errors
 		return true
@@ -607,7 +604,6 @@ local function new_path(bp, args)
 			return parts
 		end
 
-		local golib_os = import("os")
 		local full_path = base_path
 
 		local path_parts = split_path(path_text)
@@ -616,13 +612,13 @@ local function new_path(bp, args)
 			if is_dir and part ~= "" then
 				full_path = filepath.Join(full_path, part)
 				if not path_exists(full_path) then
-					golib_os.Mkdir(full_path, golib_os.ModePerm)
+					os.Mkdir(full_path, os.ModePerm)
 					micro.Log("Filemanager created directory: " .. full_path)
 				end
 			elseif not is_dir and part ~= "" then
 				full_path = filepath.Join(full_path, part)
 				if not path_exists(full_path) then
-					golib_os.Create(full_path)
+					os.Create(full_path)
 					micro.Log("Filemanager created file: " .. full_path)
 				end
 			end
