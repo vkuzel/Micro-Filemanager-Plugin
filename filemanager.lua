@@ -400,37 +400,6 @@ local function compress_target(y, delete_y)
 	refresh_and_select()
 end
 
--- Prompts the user for deletion of a file/dir when triggered
--- Not local so Micro can access it
-function prompt_delete_at_cursor()
-	local y = get_safe_y()
-	-- Don't let them delete the top 3 index dir/separator/..
-	if y == 0 or scanlist_is_empty() then
-		micro.InfoBar():Error("You can't delete that")
-		-- Exit early if there's nothing to delete
-		return
-	end
-
-    micro.InfoBar():YNPrompt("Do you want to delete the " .. (scanlist[y].dirmsg ~= "" and "dir" or "file") .. ' "' .. scanlist[y].abspath .. '"? ', function(yes, canceled)
-        if yes and not canceled then
-            -- Use Go's os.Remove to delete the file
-            local go_os = import("os")
-            -- Delete the target (if its a dir then the children too)
-            local remove_log = go_os.RemoveAll(scanlist[y].abspath)
-            if remove_log == nil then
-                micro.InfoBar():Message("Filemanager deleted: ", scanlist[y].abspath)
-                -- Remove the target (and all nested) from scanlist[y + 1]
-                -- true to delete y
-                compress_target(get_safe_y(), true)
-            else
-                micro.InfoBar():Error("Failed deleting file/dir: ", remove_log)
-            end
-        else
-            micro.InfoBar():Message("Nothing was deleted")
-        end
-    end)
-end
-
 -- Changes the current dir in the top of the tree..
 -- then scans that dir, and prints it to the view
 local function update_current_dir(path)
@@ -1267,8 +1236,6 @@ function init()
     config.MakeCommand("rename", rename_at_cursor, config.NoComplete)
     -- Create a new path (dirs and files)
     config.MakeCommand("create", new_path, config.NoComplete)
-    -- Delete a file/dir, and anything contained in it if it's a dir
-    config.MakeCommand("rm", prompt_delete_at_cursor, config.NoComplete)
     -- Adds colors to the ".." and any dir's in the tree view via syntax highlighting
     -- TODO: Change it to work with git, based on untracked/changed/added/whatever
     config.AddRuntimeFile("filemanager", config.RTSyntax, "syntax.yaml")
