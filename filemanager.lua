@@ -1129,36 +1129,28 @@ function preCursorRight(view)
 	end
 end
 
--- Workaround for tab getting inserted into opened files
+-- Workaround for newline getting inserted into opened files
 -- Ref https://github.com/zyedidia/micro/issues/992
-local tab_pressed = false
+local enter_pressed = false
 
--- Tab
-function preIndentSelection(view)
-	if view == tree_view then
-		tab_pressed = true
-		-- Open the file
-		-- Using tab instead of enter, since enter won't work with Readonly
-		try_open_at_y(tree_view.Cursor.Loc.Y)
-		-- Don't actually insert a tab
-		return false
-	end
-end
-
--- Workaround for tab getting inserted into opened files
--- Ref https://github.com/zyedidia/micro/issues/992
-function preInsertTab(view)
-	if tab_pressed then
-		tab_pressed = false
-		return false
-	end
-end
+-- Enter
 function preInsertNewline(view)
-    if view == tree_view then
-        return false
-    end
-    return true
+	if view == tree_view then
+		enter_pressed = true
+		-- Open the file
+		try_open_at_y(tree_view.Cursor.Loc.Y)
+		-- Don't actually insert a newline
+		return false
+	end
+	-- Workaround for newline getting inserted into the opened file
+	-- Ref https://github.com/zyedidia/micro/issues/992
+	if enter_pressed then
+		enter_pressed = false
+		return false
+	end
+	return true
 end
+
 -- CtrlL
 function onJumpLine(view)
 	-- Highlight the line after jumping to it
@@ -1219,6 +1211,14 @@ end
 -- Fail a bunch of useless actions
 -- Some of these need to be removed (read-only makes some useless)
 ------------------------------------------------------------------
+
+function preIndentSelection(view)
+	return false_if_tree(view)
+end
+
+function preInsertTab(view)
+	return false_if_tree(view)
+end
 
 function preStartOfLine(view)
 	return false_if_tree(view)

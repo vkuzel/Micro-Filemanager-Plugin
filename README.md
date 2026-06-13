@@ -35,7 +35,7 @@ If you want to [keybind](https://github.com/zyedidia/micro/blob/master/runtime/h
 | Command  | Keybinding(s)              | What it does                                                                                | API for `bindings.json`               |
 | :------- | :------------------------- | :------------------------------------------------------------------------------------------ | :------------------------------------ |
 | `tree`   | -                          | Open/close the tree                                                                         | `filemanager.toggle_tree`             |
-| -        | <kbd>Tab</kbd> & MouseLeft | Open a file, or go into the directory. Goes back a dir if on `..`                           | `filemanager.try_open_at_cursor`      |
+| -        | <kbd>Enter</kbd> & MouseLeft | Open a file, or go into the directory. Goes back a dir if on `..`                           | `filemanager.try_open_at_cursor`      |
 | -        | <kbd>→</kbd>               | Expand directory in tree listing                                                            | `filemanager.uncompress_at_cursor`    |
 | -        | <kbd>←</kbd>               | Collapse directory listing                                                                  | `filemanager.compress_at_cursor`      |
 | -        | <kbd>Shift ⬆</kbd>         | Go to the target's parent directory                                                         | `filemanager.goto_parent_dir`         |
