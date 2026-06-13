@@ -178,6 +178,7 @@ local function get_safe_y(optional_y)
 	return y
 end
 
+-- TODO Inline
 -- Joins the target dir's leading path to the passed name
 local function dirname_and_join(path, join_name)
 	-- The leading path to the dir we're in
@@ -573,6 +574,7 @@ local function uncompress_target(y)
 	end
 end
 
+-- TODO Inline
 -- Stat a path to check if it exists, returning true/false
 local function path_exists(path)
 	local go_os = import("os")
@@ -662,39 +664,64 @@ local function create_filedir(filedir_name, make_dir)
 	-- A true/false if scanlist is empty
 	local scanlist_empty = scanlist_is_empty()
 
-	-- Check there's actually anything in the list, and that they're not on the ".."
-	if not scanlist_empty and y ~= 0 then
-		-- If they're inserting on a folder, don't strip its path
-		if scanlist[y].dirmsg ~= "" then
-			-- Join our new file/dir onto the dir
-			filedir_path = filepath.Join(scanlist[y].abspath, filedir_name)
-		else
-			-- The current index is a file, so strip its name and join ours onto it
-			filedir_path = dirname_and_join(scanlist[y].abspath, filedir_name)
+	local function base_path()
+	  if not scanlist_empty and y ~= 0 then
+		  -- If they're inserting on a folder, don't strip its path
+		  if scanlist[y].dirmsg ~= "" then
+			  -- Join our new file/dir onto the dir
+			  return scanlist[y].abspath
+		  else
+			  -- The current index is a file, so strip its name and join ours onto it
+			  return filepath.Dir(scanlist[y].abspath)
+		  end
+	  else
+		  -- if nothing in the list, or cursor is on top of "..", use the current dir
+		  return current_dir
+	  end
+	end
+
+	local function create_full_path(base_path, path_text)
+		local function split_path(path_text)
+			local sep = "/"
+			local parts, start = {}, 1
+			while true do
+			local i = string.find(path_text, sep, start, true)
+			if not i then
+				parts[#parts + 1] = string.sub(path_text, start)
+				break
+			end
+			parts[#parts + 1] = string.sub(path_text, start, i - 1)
+			start = i + #sep
+			end
+			return parts
 		end
-	else
-		-- if nothing in the list, or cursor is on top of "..", use the current dir
-		filedir_path = filepath.Join(current_dir, filedir_name)
+
+		local golib_os = import("os")
+		local full_path = base_path
+
+		local path_parts = split_path(path_text)
+		for i, part in ipairs(path_parts) do
+			local is_dir = i ~= #path_parts
+			if is_dir and part ~= "" then
+				full_path = filepath.Join(full_path, part)
+				if not path_exists(full_path) then
+					golib_os.Mkdir(full_path, golib_os.ModePerm)
+					micro.Log("Filemanager created directory: " .. full_path)
+				end
+			elseif not is_dir and part ~= "" then
+				full_path = filepath.Join(full_path, part)
+				if not path_exists(full_path) then
+					golib_os.Create(full_path)
+					micro.Log("Filemanager created file: " .. full_path)
+				end
+			end
+		end
+
+		return full_path
 	end
 
-	-- Check if the name is already taken by a file/dir
-	if path_exists(filedir_path) then
-		micro.InfoBar():Error("You can't create a file/dir with a pre-existing name")
-		return
-	end
-
-	-- Use Go's os package for creating the files
-	local golib_os = import("os")
-	-- Create the dir or file
-	if make_dir then
-		-- Creates the dir
-		golib_os.Mkdir(filedir_path, golib_os.ModePerm)
-		micro.Log("Filemanager created directory: " .. filedir_path)
-	else
-		-- Creates the file
-		golib_os.Create(filedir_path)
-		micro.Log("Filemanager created file: " .. filedir_path)
-	end
+	local base_path = base_path()
+	local filedir_path = create_full_path(base_path, filedir_name)
 
 	-- If the file we tried to make doesn't exist, fail
 	if not path_exists(filedir_path) then
