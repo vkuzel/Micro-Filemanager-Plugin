@@ -52,7 +52,7 @@ local function repeat_str(str, len)
 end
 
 -- A check for if a path is a dir
-local function is_dir(path)
+local function io_is_dir(path)
 	-- Returns a FileInfo on the current file/path
 	local file_info, stat_error = os.Stat(path)
 	-- Wrap in nil check for file/dirs without read permissions
@@ -125,7 +125,7 @@ local function get_scanlist(dir, ownership, indent_n)
 	local function get_results_object(file_name)
 		local abs_path = filepath.Join(dir, file_name)
 		-- Use "+" for dir's, "" for files
-		local dirmsg = (is_dir(abs_path) and "+" or "")
+		local dirmsg = (io_is_dir(abs_path) and "+" or "")
 		return new_listobj(abs_path, dirmsg, ownership, indent_n)
 	end
 
@@ -138,7 +138,7 @@ local function get_scanlist(dir, ownership, indent_n)
 	for i = 1, #dir_scan do
 		filename = dir_scan[i]:Name()
 		-- This file is good to show, proceed
-		if folders_first and not is_dir(filepath.Join(dir, filename)) then
+		if folders_first and not io_is_dir(filepath.Join(dir, filename)) then
 			-- If folders_first and this is a file, add it to (temporary) files
 			files[#files + 1] = get_results_object(filename)
 		else
@@ -536,9 +536,8 @@ local function uncompress_target(y)
 	end
 end
 
--- TODO Inline
 -- Stat a path to check if it exists, returning true/false
-local function path_exists(path)
+local function io_path_exists(path)
 	-- Stat the file/dir path we created
 	-- file_stat should be non-nil, and stat_err should be nil on success
 	local file_stat, stat_err = os.Stat(path)
@@ -572,7 +571,7 @@ local function new_path(bp, args)
 	-- A true/false if scanlist is empty
 	local scanlist_empty = scanlist_is_empty()
 
-	local function base_path()
+	local function io_base_path()
 	  if not scanlist_empty and y ~= 0 then
 		  -- If they're inserting on a folder, don't strip its path
 		  if scanlist[y].dirmsg ~= "" then
@@ -588,7 +587,7 @@ local function new_path(bp, args)
 	  end
 	end
 
-	local function create_path(base_path, path_text)
+	local function io_create_path(base_path, path_text)
 		local function split_path(path_text)
 			local sep = "/"
 			local parts, start = {}, 1
@@ -611,13 +610,13 @@ local function new_path(bp, args)
 			local is_dir = i ~= #path_parts
 			if is_dir and part ~= "" then
 				full_path = filepath.Join(full_path, part)
-				if not path_exists(full_path) then
+				if not io_path_exists(full_path) then
 					os.Mkdir(full_path, os.ModePerm)
 					micro.Log("Filemanager created directory: " .. full_path)
 				end
 			elseif not is_dir and part ~= "" then
 				full_path = filepath.Join(full_path, part)
-				if not path_exists(full_path) then
+				if not io_path_exists(full_path) then
 					os.Create(full_path)
 					micro.Log("Filemanager created file: " .. full_path)
 				end
@@ -627,11 +626,11 @@ local function new_path(bp, args)
 		return full_path
 	end
 
-	local base_path = base_path()
-	local filedir_path = create_path(base_path, filedir_name)
+	local base_path = io_base_path()
+	local filedir_path = io_create_path(base_path, filedir_name)
 
 	-- If the file we tried to make doesn't exist, fail
-	if path_exists(filedir_path) then
+	if io_path_exists(filedir_path) then
 		micro.InfoBar():Message("Filemanager created: ", filedir_path)
 		open_path(filedir_path)
 	else
