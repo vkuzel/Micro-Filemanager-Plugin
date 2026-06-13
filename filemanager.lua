@@ -510,7 +510,7 @@ end
 -- If it's the top dir indicator, or separator, nothing happens
 -- If it's ".." then it tries to go back a dir
 -- If it's a dir then it moves into the dir and refreshes
--- If it's actually a file, open it in a new vsplit
+-- If it's actually a file, open it in tree view
 -- THIS EXPECTS ZERO-BASED Y
 local function try_open_at_y(y)
 	-- 2 is the zero-based index of ".."
@@ -525,10 +525,25 @@ local function try_open_at_y(y)
 		else
 			-- If it's a file, then open it
 			micro.InfoBar():Message("Filemanager opened ", scanlist[y].abspath)
-			-- Opens the absolute path in new vertical view
-			micro.CurPane():VSplitIndex(buffer.NewBufferFromFile(scanlist[y].abspath), true)
-			-- Resizes all views after opening a file
-			-- tabs[curTab + 1]:Resize()
+
+			-- Close all panes except for the tree view
+			local tab = tree_view:Tab()
+			local i = 1
+			while #tab.Panes > 1 do
+				pane = tab.Panes[i]
+				if pane ~= tree_view then
+					pane:Quit()
+					i = 1
+				else
+					i = i + 1
+				end
+			end
+
+			-- Replace tree view with the file
+			local new_buf = buffer.NewBufferFromFile(scanlist[y].abspath)
+			tree_view:OpenBuffer(new_buf)
+			tree_view = nil
+			clear_messenger()
 		end
 	else
 		micro.InfoBar():Error("Can't open that")
