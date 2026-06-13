@@ -178,15 +178,6 @@ local function get_safe_y(optional_y)
 	return y
 end
 
--- TODO Inline
--- Joins the target dir's leading path to the passed name
-local function dirname_and_join(path, join_name)
-	-- The leading path to the dir we're in
-	local leading_path = filepath.Dir(path)
-	-- Joins with OS-specific slashes
-	return filepath.Join(leading_path, join_name)
-end
-
 -- Hightlights the line when you move the cursor up/down
 local function select_line(last_y)
 	-- Make last_y optional
@@ -563,58 +554,6 @@ local function path_exists(path)
 		return true
 	end
 	return false
-end
-
--- Prompts for a new name, then renames the file/dir at the cursor's position
--- Not local so Micro can use it
-function rename_at_cursor(bp, args)
-
-	if micro.CurPane() ~= tree_view then
-		micro.InfoBar():Message("Rename only works with the cursor in the tree!")
-		return
-	end
-
-	-- Safety check they actually passed a name
-	if #args < 1 then
-		micro.InfoBar():Error('When using "rename" you need to input a new name')
-		return
-	end
-
-	local new_name = args[1]
-
-	-- +1 since Go uses zero-based indices
-	local y = get_safe_y()
-	-- Check if they're trying to rename the top stuff
-	if y == 0 then
-		-- Error since they tried to rename the top stuff
-		micro.InfoBar():Message("You can't rename that!")
-		return
-	end
-
-	-- The old file/dir's path
-	local old_path = scanlist[y].abspath
-	-- Join the path into their supplied rename, so that we have an absolute path
-	local new_path = dirname_and_join(old_path, new_name)
-	-- Use Go's os package for renaming the file/dir
-	local golib_os = import("os")
-	-- Actually rename the file
-	local log_out = golib_os.Rename(old_path, new_path)
-	-- Output the log, if any, of the rename
-	if log_out ~= nil then
-		micro.Log("Rename log: ", log_out)
-	end
-
-	-- Check if the rename worked
-	if not path_exists(new_path) then
-		micro.InfoBar():Error("Path doesn't exist after rename!")
-		return
-	end
-
-	-- NOTE: doesn't alphabetically sort after refresh, but it probably should
-	-- Replace the old path with the new path
-	scanlist[y].abspath = new_path
-	-- Refresh the tree with our new name
-	refresh_and_select()
 end
 
 -- Prompts the user for the file/dir name, then creates the file/dir using Go's os package
@@ -1232,8 +1171,6 @@ function init()
 
     -- Open/close the tree view
     config.MakeCommand("tree", toggle_tree, config.NoComplete)
-    -- Rename the file/dir under the cursor
-    config.MakeCommand("rename", rename_at_cursor, config.NoComplete)
     -- Create a new path (dirs and files)
     config.MakeCommand("create", new_path, config.NoComplete)
     -- Adds colors to the ".." and any dir's in the tree view via syntax highlighting
