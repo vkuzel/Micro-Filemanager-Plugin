@@ -683,7 +683,7 @@ local function new_path(bp, args)
 	  end
 	end
 
-	local function create_full_path(base_path, path_text)
+	local function create_path(base_path, path_text)
 		local function split_path(path_text)
 			local sep = "/"
 			local parts, start = {}, 1
@@ -724,7 +724,7 @@ local function new_path(bp, args)
 	end
 
 	local base_path = base_path()
-	local filedir_path = create_full_path(base_path, filedir_name)
+	local filedir_path = create_path(base_path, filedir_name)
 
 	-- If the file we tried to make doesn't exist, fail
 	if path_exists(filedir_path) then
