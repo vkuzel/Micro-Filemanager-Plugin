@@ -107,16 +107,6 @@ local function get_basename(path)
 	end
 end
 
--- Returns true/false if the file is a dotfile
-local function is_dotfile(file_name)
-	-- Check if the filename starts with a dot
-	if string.sub(file_name, 1, 1) == "." then
-		return true
-	else
-		return false
-	end
-end
-
 -- Structures the output of the scanned directory content to be used in the scanlist table
 -- This is useful for both initial creation of the tree, and when nesting with uncompress_target()
 local function get_scanlist(dir, ownership, indent_n)
@@ -142,46 +132,20 @@ local function get_scanlist(dir, ownership, indent_n)
 	end
 
 	-- Save so we don't have to rerun GetOption a bunch
-	local show_dotfiles = config.GetGlobalOption("filemanager.showdotfiles")
-	local show_ignored = config.GetGlobalOption("filemanager.showignored")
 	local folders_first = config.GetGlobalOption("filemanager.foldersfirst")
-
-	-- The list of VCS-ignored files (if any)
-	-- Only bother getting ignored files if we're not showing ignored
-	local ignored_files = (not show_ignored and get_ignored_files(dir) or {})
-	-- True/false if the file is an ignored file
-	local function is_ignored_file(filename)
-		for i = 1, #ignored_files do
-			if ignored_files[i] == filename then
-				return true
-			end
-		end
-		return false
-	end
 
 	-- Hold the current scan's filename in most of the loops below
 	local filename
 
 	for i = 1, #dir_scan do
-		local showfile = true
 		filename = dir_scan[i]:Name()
-		-- If we should not show dotfiles, and this is a dotfile, don't show
-		if not show_dotfiles and is_dotfile(filename) then
-			showfile = false
-		end
-		-- If we should not show ignored files, and this is an ignored file, don't show
-		if not show_ignored and is_ignored_file(filename) then
-			showfile = false
-		end
-		if showfile then
-			-- This file is good to show, proceed
-			if folders_first and not is_dir(filepath.Join(dir, filename)) then
-				-- If folders_first and this is a file, add it to (temporary) files
-				files[#files + 1] = get_results_object(filename)
-			else
-				-- Otherwise, add to results
-				results[#results + 1] = get_results_object(filename)
-			end
+		-- This file is good to show, proceed
+		if folders_first and not is_dir(filepath.Join(dir, filename)) then
+			-- If folders_first and this is a file, add it to (temporary) files
+			files[#files + 1] = get_results_object(filename)
+		else
+			-- Otherwise, add to results
+			results[#results + 1] = get_results_object(filename)
 		end
 	end
 	if #files > 0 then
@@ -1356,10 +1320,6 @@ function preSelectAll(view)
 end
 
 function init()
-    -- Let the user disable showing of dotfiles like ".editorconfig" or ".DS_STORE"
-    config.RegisterCommonOption("filemanager", "showdotfiles", true)
-    -- Let the user disable showing files ignored by the VCS (i.e. gitignored)
-    config.RegisterCommonOption("filemanager", "showignored", true)
     -- Let the user disable going to parent directory via left arrow key when file selected (not directory)
     config.RegisterCommonOption("filemanager", "compressparent", true)
     -- Let the user choose to list sub-folders first when listing the contents of a folder
