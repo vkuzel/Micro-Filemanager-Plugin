@@ -723,9 +723,10 @@ local function new_path(bp, args)
 	local filedir_path = create_full_path(base_path, filedir_name)
 
 	-- If the file we tried to make doesn't exist, fail
-	if not path_exists(filedir_path) then
-		micro.InfoBar():Error("The file/dir creation failed")
-
+	if path_exists(filedir_path) then
+		micro.InfoBar():Message("Filemanager created: ", filedir_path)
+	else
+		micro.InfoBar():Error("Filemanager creation failed: ", filedir_path)
 		return
 	end
 
