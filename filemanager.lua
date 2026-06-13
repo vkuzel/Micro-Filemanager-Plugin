@@ -7,6 +7,65 @@ local buffer = import("micro/buffer")
 local os = import("os")
 local filepath = import("path/filepath")
 
+local function io_path_exists(path)
+	local file_stat, stat_err = os.Stat(path)
+	if stat_err ~= nil then
+		return os.IsExist(stat_err)
+	elseif file_stat ~= nil then
+		return true
+	end
+	return false
+end
+
+local function io_is_dir(path)
+	local file_info, stat_error = os.Stat(path)
+	if file_info ~= nil then
+		return file_info:IsDir()
+	else
+		micro.InfoBar():Error("Error checking if is dir: ", stat_error)
+		return nil
+	end
+end
+
+local function io_create_path(base_path, path_text)
+	local function split_path(path_text)
+		local sep = "/"
+		local parts, start = {}, 1
+		while true do
+		local i = string.find(path_text, sep, start, true)
+		if not i then
+			parts[#parts + 1] = string.sub(path_text, start)
+			break
+		end
+		parts[#parts + 1] = string.sub(path_text, start, i - 1)
+		start = i + #sep
+		end
+		return parts
+	end
+
+	local full_path = base_path
+
+	local path_parts = split_path(path_text)
+	for i, part in ipairs(path_parts) do
+		local is_dir = i ~= #path_parts
+		if is_dir and part ~= "" then
+			full_path = filepath.Join(full_path, part)
+			if not io_path_exists(full_path) then
+				os.Mkdir(full_path, os.ModePerm)
+				micro.Log("Filemanager created directory: " .. full_path)
+			end
+		elseif not is_dir and part ~= "" then
+			full_path = filepath.Join(full_path, part)
+			if not io_path_exists(full_path) then
+				os.Create(full_path)
+				micro.Log("Filemanager created file: " .. full_path)
+			end
+		end
+	end
+
+	return full_path
+end
+
 -- Clear out all stuff in Micro's messenger
 local function clear_messenger()
 	-- messenger:Reset()
@@ -51,21 +110,6 @@ local function repeat_str(str, len)
 	return table.concat(string_table)
 end
 
--- A check for if a path is a dir
-local function io_is_dir(path)
-	-- Returns a FileInfo on the current file/path
-	local file_info, stat_error = os.Stat(path)
-	-- Wrap in nil check for file/dirs without read permissions
-	if file_info ~= nil then
-		-- Returns true/false if it's a dir
-		return file_info:IsDir()
-	else
-		-- Couldn't stat the file/dir, usually because no read permissions
-		micro.InfoBar():Error("Error checking if is dir: ", stat_error)
-		-- Nil since we can't read the path
-		return nil
-	end
-end
 
 -- Returns a list of files (in the target dir) that are ignored by the VCS system (if exists)
 -- aka this returns a list of gitignored files (but for whatever VCS is found)
@@ -536,24 +580,28 @@ local function uncompress_target(y)
 	end
 end
 
--- Stat a path to check if it exists, returning true/false
-local function io_path_exists(path)
-	-- Stat the file/dir path we created
-	-- file_stat should be non-nil, and stat_err should be nil on success
-	local file_stat, stat_err = os.Stat(path)
-	-- Check if what we tried to create exists
-	if stat_err ~= nil then
-		-- true/false if the file/dir exists
-		return os.IsExist(stat_err)
-	elseif file_stat ~= nil then
-		-- Assume it exists if no errors
-		return true
-	end
-	return false
-end
-
 -- Prompts the user for the file/dir name, then creates the file/dir using Go's os package
 local function new_path(bp, args)
+	local function base_path()
+		-- The target they're trying to create on top of/in/at/whatever
+		local y = get_safe_y()
+		-- A true/false if scanlist is empty
+		local scanlist_empty = scanlist_is_empty()
+		if not scanlist_empty and y ~= 0 then
+			-- If they're inserting on a folder, don't strip its path
+			if scanlist[y].dirmsg ~= "" then
+				-- Join our new file/dir onto the dir
+				return scanlist[y].abspath
+			else
+				-- The current index is a file, so strip its name and join ours onto it
+				return filepath.Dir(scanlist[y].abspath)
+			end
+		else
+			-- if nothing in the list, or cursor is on top of "..", use the current dir
+			return current_dir
+		end
+	end
+
 	if micro.CurPane() ~= tree_view then
 		micro.InfoBar():Message("You can't create a file/dir if your cursor isn't in the tree!")
 		return
@@ -564,79 +612,18 @@ local function new_path(bp, args)
 		return
 	end
 
+	local base_path = base_path()
 	local filedir_name = args[1]
-
-	-- The target they're trying to create on top of/in/at/whatever
-	local y = get_safe_y()
-	-- A true/false if scanlist is empty
-	local scanlist_empty = scanlist_is_empty()
-
-	local function io_base_path()
-	  if not scanlist_empty and y ~= 0 then
-		  -- If they're inserting on a folder, don't strip its path
-		  if scanlist[y].dirmsg ~= "" then
-			  -- Join our new file/dir onto the dir
-			  return scanlist[y].abspath
-		  else
-			  -- The current index is a file, so strip its name and join ours onto it
-			  return filepath.Dir(scanlist[y].abspath)
-		  end
-	  else
-		  -- if nothing in the list, or cursor is on top of "..", use the current dir
-		  return current_dir
-	  end
-	end
-
-	local function io_create_path(base_path, path_text)
-		local function split_path(path_text)
-			local sep = "/"
-			local parts, start = {}, 1
-			while true do
-			local i = string.find(path_text, sep, start, true)
-			if not i then
-				parts[#parts + 1] = string.sub(path_text, start)
-				break
-			end
-			parts[#parts + 1] = string.sub(path_text, start, i - 1)
-			start = i + #sep
-			end
-			return parts
-		end
-
-		local full_path = base_path
-
-		local path_parts = split_path(path_text)
-		for i, part in ipairs(path_parts) do
-			local is_dir = i ~= #path_parts
-			if is_dir and part ~= "" then
-				full_path = filepath.Join(full_path, part)
-				if not io_path_exists(full_path) then
-					os.Mkdir(full_path, os.ModePerm)
-					micro.Log("Filemanager created directory: " .. full_path)
-				end
-			elseif not is_dir and part ~= "" then
-				full_path = filepath.Join(full_path, part)
-				if not io_path_exists(full_path) then
-					os.Create(full_path)
-					micro.Log("Filemanager created file: " .. full_path)
-				end
-			end
-		end
-
-		return full_path
-	end
-
-	local base_path = io_base_path()
 	local filedir_path = io_create_path(base_path, filedir_name)
 
 	-- If the file we tried to make doesn't exist, fail
-	if io_path_exists(filedir_path) then
-		micro.InfoBar():Message("Filemanager created: ", filedir_path)
-		open_path(filedir_path)
-	else
+	if not io_path_exists(filedir_path) then
 		micro.InfoBar():Error("Filemanager creation failed: ", filedir_path)
 		return
 	end
+
+	micro.InfoBar():Message("Filemanager created: ", filedir_path)
+	open_path(filedir_path)
 end
 
 -- open_tree setup's the view
