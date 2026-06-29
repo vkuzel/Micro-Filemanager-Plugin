@@ -257,10 +257,10 @@ end
 local function refresh_view()
 	clear_messenger()
 
-	-- If it's less than 30, just use 30 for width. Don't want it too small
+	-- If it's less than 60, just use 60 for width. Don't want it too small
 
-	if tree_view:GetView().Width < 30 then
-		tree_view:ResizePane(30)
+	if tree_view:GetView().Width < 60 then
+		tree_view:ResizePane(60)
 	end
 
 	-- Delete everything in the view/buffer
@@ -425,9 +425,9 @@ local function compress_target(y, delete_y)
 		scanlist = second_table
 	end
 
-	if tree_view:GetView().Width > (30 + highest_visible_indent) then
+	if tree_view:GetView().Width > (60 + highest_visible_indent) then
 		-- Shave off some width
-        tree_view:ResizePane(30 + highest_visible_indent)
+        tree_view:ResizePane(60 + highest_visible_indent)
 	end
 
 	refresh_and_select()
@@ -438,8 +438,8 @@ end
 local function update_current_dir(path)
 	-- Clear the highest since this is a full refresh
 	highest_visible_indent = 0
-	-- Set the width back to 30
-	tree_view:ResizePane(30)
+	-- Set the width back to 60
+	tree_view:ResizePane(60)
 	-- Update the current dir to the new path
 	current_dir = path
 
@@ -633,8 +633,8 @@ local function open_tree()
 	-- Save the new view so we can access it later
 	tree_view = micro.CurPane()
 
-	-- Set the width of tree_view to 30% & lock it
-    tree_view:ResizePane(30)
+	-- Set the width of tree_view to 60 & lock it
+    tree_view:ResizePane(60)
 	-- Set the type to unsavable
     -- tree_view.Buf.Type = buffer.BTLog
     tree_view.Buf.Type.Scratch = true
